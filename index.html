@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#153b55">
+  <title>工序·换型官｜换型闭环控制台</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-row">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">工</span>
+        <div class="brand-copy">
+          <div class="brand-line">
+            <h1>工序·换型官</h1>
+            <span class="version">OPS 1.0</span>
+          </div>
+          <p>多品种小批量产线 · 换型闭环控制台</p>
+        </div>
+      </div>
+      <div class="topbar-stats" id="topStats" aria-label="当前任务摘要"></div>
+    </div>
+    <nav class="tabs" aria-label="工作区导航">
+      <button class="tab on" data-view="overview">总览 <i id="tabSteps">0/7</i></button>
+      <button class="tab" data-view="orders">换型工单</button>
+      <button class="tab" data-view="execute">执行台 <i id="tabExecute">待开始</i></button>
+      <button class="tab" data-view="evidence">证据链 <i id="tabEvidence">0</i></button>
+      <button class="tab" data-view="agent">对话诊断</button>
+      <button class="tab" data-view="field">现场导入</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="view on" id="view-overview">
+      <div class="local-note">
+        <span class="live-dot"></span>
+        <b>本机安全模式</b>
+        <span>数据仅保存在当前浏览器，不上传服务器</span>
+        <span class="clock" id="clock"></span>
+      </div>
+
+      <div class="kpis" id="kpis"></div>
+
+      <div class="overview-grid">
+        <section class="panel current-panel">
+          <div class="panel-hd">
+            <div>
+              <h3>当前换型任务</h3>
+              <span id="currentTaskSub">等待载入工单</span>
+            </div>
+            <span class="task-state" id="taskState">就绪</span>
+          </div>
+          <div class="panel-bd current-body">
+            <div class="progress-dial" id="progressDial">
+              <div class="progress-inner">
+                <b id="progressPercent">0%</b>
+                <span>完成</span>
+              </div>
+            </div>
+            <div class="current-summary">
+              <span class="eyebrow">NEXT ACTION</span>
+              <h2 id="nextTitle">开始一次可验证的换型</h2>
+              <p id="nextDescription">载入工单后，系统会按设备与产品要求生成动态换型清单。</p>
+              <div class="current-meta" id="currentMeta"></div>
+              <button class="btn primary" id="goExecute">进入执行台</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel risk-panel">
+          <div class="panel-hd">
+            <div>
+              <h3>关键控制点</h3>
+              <span>三项现场核验决定是否放行</span>
+            </div>
+            <span class="panel-badge">状态机</span>
+          </div>
+          <div class="panel-bd">
+            <div class="control-list" id="controlList"></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <div>
+            <h3>换型执行时间轴</h3>
+            <span>任何关键动作核验失败，后续步骤保持锁定</span>
+          </div>
+          <span class="sub" id="timelineHint">0 / 7 已验证</span>
+        </div>
+        <div class="panel-bd">
+          <div class="process-rail" id="processRail"></div>
+        </div>
+      </section>
+
+      <div class="grid-2">
+        <section class="panel">
+          <div class="panel-hd">
+            <div>
+              <h3>现场矩阵</h3>
+              <span>动作、核验与证据逐项闭环</span>
+            </div>
+          </div>
+          <div class="panel-bd flush" id="stepMatrix"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-hd">
+            <div>
+              <h3>最近证据</h3>
+              <span>每条记录均包含时间、步骤与判定</span>
+            </div>
+            <span class="sub" id="evidenceCountInline">0 条</span>
+          </div>
+          <div class="panel-bd recent-events" id="recentEvents"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="view" id="view-orders">
+      <div class="section-title">
+        <div>
+          <h2>换型工单</h2>
+          <p>选择目标型号，系统据此生成当前设备专属的核验条件</p>
+        </div>
+        <span class="hint">工单切换会重置当前执行进度</span>
+      </div>
+
+      <div class="order-layout">
+        <section class="panel">
+          <div class="panel-hd">
+            <div>
+              <h3>任务参数</h3>
+              <span>可从MES/ERP复制工单号，也可直接使用二维码扫描枪输入</span>
+            </div>
+          </div>
+          <form class="panel-bd order-form" id="orderForm">
+            <label class="field">
+              <span>工单号</span>
+              <input id="workOrderInput" name="workOrder" autocomplete="off" required>
+            </label>
+            <label class="field">
+              <span>产线</span>
+              <select id="lineInput" name="line">
+                <option value="L02">L02 · 小家电装配线</option>
+                <option value="L03">L03 · 3C柔性装配线</option>
+                <option value="P01">P01 · 包装换线区</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>操作人</span>
+              <input id="operatorInput" name="operator" autocomplete="off">
+            </label>
+            <div class="field span-2">
+              <span>目标型号</span>
+              <div class="model-options" id="modelOptions"></div>
+            </div>
+            <div class="form-actions span-2">
+              <button type="submit" class="btn primary">载入并生成动态换型清单</button>
+              <button type="button" class="btn ghost" id="loadDemoOrder">载入示例工单</button>
+              <button type="button" class="btn text danger-text" id="resetTask">重置当前任务</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-hd">
+            <div>
+              <h3>系统解析结果</h3>
+              <span>以下值将作为动作核验的唯一标准</span>
+            </div>
+            <span class="panel-badge" id="modelBadge">B02</span>
+          </div>
+          <div class="panel-bd" id="orderResolution"></div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <div>
+            <h3>工单风险提示</h3>
+            <span>根据目标型号与历史异常自动生成</span>
+          </div>
+        </div>
+        <div class="panel-bd">
+          <div class="risk-grid" id="riskGrid"></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" id="view-execute">
+      <div class="section-title">
+        <div>
+          <h2>现场执行台</h2>
+          <p id="executeSubtitle">载入工单后开始换型</p>
+        </div>
+        <div class="task-chip" id="executeTaskChip">未载入</div>
+      </div>
+
+      <div class="execute-layout">
+        <aside class="panel step-panel">
+          <div class="panel-hd">
+            <div>
+              <h3>换型步骤</h3>
+              <span id="stepProgressText">0 / 7</span>
+            </div>
+          </div>
+          <div class="step-list" id="stepList"></div>
+        </aside>
+
+        <section class="panel action-panel">
+          <div class="panel-hd">
+            <div>
+              <h3 id="actionPanelTitle">当前动作</h3>
+              <span id="actionPanelSub">系统将逐项核验</span>
+            </div>
+            <span class="status-badge" id="actionStatus">等待开始</span>
+          </div>
+          <div class="panel-bd" id="actionBody"></div>
+        </section>
+
+        <aside class="panel audit-panel">
+          <div class="panel-hd">
+            <div>
+              <h3>实时审计</h3>
+              <span>本地事件记录</span>
+            </div>
+          </div>
+          <div class="panel-bd" id="auditTrail"></div>
+          <div class="audit-footer">
+            <button class="btn ghost small" data-go-view="evidence">查看完整证据链</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="view" id="view-evidence">
+      <div class="section-title">
+        <div>
+          <h2>换型证据包</h2>
+          <p>记录每一步的输入、判断、结果与操作时间</p>
+        </div>
+        <div class="button-row">
+          <button class="btn ghost" id="exportJson">导出 JSON</button>
+          <button class="btn ghost" id="exportCsv">导出 CSV</button>
+          <button class="btn primary" id="printEvidence">打印证据包</button>
+        </div>
+      </div>
+
+      <div class="kpis compact" id="evidenceKpis"></div>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <div>
+            <h3>判定摘要</h3>
+            <span>证据完整性由当前任务状态自动计算</span>
+          </div>
+          <span class="panel-badge" id="evidenceStatus">草稿</span>
+        </div>
+        <div class="panel-bd">
+          <div class="evidence-summary" id="evidenceSummary"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <div>
+            <h3>审计记录</h3>
+            <span>时间倒序 · 含异常、整改与放行记录</span>
+          </div>
+          <span class="sub" id="digestLabel">摘要 —</span>
+        </div>
+        <div class="panel-bd flush">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>时间</th><th>步骤</th><th>类型</th><th>证据内容</th><th>操作人</th></tr>
+              </thead>
+              <tbody id="evidenceTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="view" id="view-agent">
+      <div class="agent-layout">
+        <section class="panel chat-panel">
+          <div class="panel-hd chat-head">
+            <div class="chat-title">
+              <span class="live-dot"></span>
+              <h3>换型执行 Agent</h3>
+              <span class="panel-badge">本地规则引擎</span>
+            </div>
+            <span class="sub">可读取当前任务、步骤状态与审计记录</span>
+          </div>
+          <div class="chat-body" id="chatBody"></div>
+          <div class="chat-quick" id="chatQuick">
+            <button data-question="下一步做什么？">下一步做什么</button>
+            <button data-question="为什么被拦截了？">为什么被拦截</button>
+            <button data-question="当前治具和参数要求是什么？">当前核验标准</button>
+            <button data-question="证据还缺什么？">证据还缺什么</button>
+            <button data-question="怎样降低换型风险？">降低风险</button>
+          </div>
+          <form class="chat-input" id="chatForm">
+            <textarea id="chatInput" rows="1" placeholder="询问当前任务、步骤要求或异常处理方式"></textarea>
+            <button class="btn primary" id="chatSend" type="submit">发送</button>
+          </form>
+        </section>
+
+        <aside class="agent-side">
+          <section class="panel">
+            <div class="panel-hd">
+              <div>
+                <h3>工具调用轨迹</h3>
+                <span>每次回答显示使用了哪些数据</span>
+              </div>
+            </div>
+            <div class="panel-bd tool-trace" id="toolTrace"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-hd">
+              <div>
+                <h3>当前上下文</h3>
+                <span>Agent可读取的业务状态</span>
+              </div>
+            </div>
+            <div class="panel-bd context-list" id="agentContext"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <section class="view" id="view-field">
+      <div class="section-title">
+        <div>
+          <h2>现场数据核验</h2>
+          <p>导入线边采集记录，批量判定治具、参数、物料与首件是否一致</p>
+        </div>
+        <span class="hint">CSV / JSON · 全部分析在浏览器本地完成</span>
+      </div>
+
+      <section class="panel">
+        <div class="panel-bd">
+          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="上传现场核验文件">
+            <div class="drop-icon">↓</div>
+            <h3>把现场采集文件拖到这里，或点击选择</h3>
+            <p>支持 CSV / JSON。字段包括工单、目标型号、治具编号、扭力、物料编码、首件间隙与首件扭力。</p>
+            <div class="button-row center">
+              <button class="btn ghost small" id="loadSampleBatch">载入示例数据</button>
+              <button class="btn ghost small" id="downloadTemplate">下载CSV模板</button>
+            </div>
+          </div>
+          <input type="file" id="fileInput" accept=".csv,.json,text/csv,application/json" hidden>
+          <div class="parse-status" id="parseStatus">尚未导入数据</div>
+        </div>
+      </section>
+
+      <div id="batchResult"></div>
+
+      <section class="panel">
+        <div class="panel-hd">
+          <div>
+            <h3>核验规则</h3>
+            <span>目标值来自当前工单与产品标准</span>
+          </div>
+        </div>
+        <div class="panel-bd">
+          <div class="rules-grid">
+            <div><b>治具</b><span>二维码文本必须与工单要求完全一致</span></div>
+            <div><b>扭力</b><span>落入目标值±公差范围才放行</span></div>
+            <div><b>物料</b><span>物料编码必须属于目标型号</span></div>
+            <div><b>首件</b><span>间隙与扭力同时满足标准，且不得缺项</span></div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
